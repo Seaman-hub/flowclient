@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Seaman-hub/localagent/goloxi"
+	"github.com/Seaman-hub/flowclient/goloxi"
 )
 
 type Action struct {
@@ -100,6 +100,8 @@ func DecodeAction(decoder *goloxi.Decoder) (goloxi.IAction, error) {
 		return DecodeActionPushPbb(_action, decoder)
 	case 27:
 		return DecodeActionPopPbb(_action, decoder)
+	case 28:
+		return DecodeActionCopyField(decoder)
 	case 29:
 		return DecodeActionMeter(_action, decoder)
 	case 65535:
@@ -5807,6 +5809,132 @@ func (self *ActionSetField) MarshalJSON() ([]byte, error) {
 	}
 	return []byte(fmt.Sprintf("{\"Type\":\"%s\",\"Arguments\":%s}", self.GetActionName(), string(jsonValue))), nil
 }
+
+// type ActionCopyField struct {
+// 	*Action
+// 	NBits  uint16
+// 	SrcOfs uint16
+// 	DstOfs uint16
+// 	Src    goloxi.IOxmId
+// 	Dst    goloxi.IOxmId
+// }
+
+// type IActionCopyField interface {
+// 	goloxi.IAction
+// 	GetNBits() uint16
+// 	GetSrcOfs() uint16
+// 	GetDstOfs() uint16
+// 	GetSrc() goloxi.IOxmId
+// 	GetDst() goloxi.IOxmId
+// }
+
+// func (self *ActionCopyField) GetNBits() uint16 {
+// 	return self.NBits
+// }
+
+// func (self *ActionCopyField) SetNBits(v uint16) {
+// 	self.NBits = v
+// }
+
+// func (self *ActionCopyField) GetSrcOfs() uint16 {
+// 	return self.SrcOfs
+// }
+
+// func (self *ActionCopyField) SetSrcOfs(v uint16) {
+// 	self.SrcOfs = v
+// }
+
+// func (self *ActionCopyField) GetDstOfs() uint16 {
+// 	return self.DstOfs
+// }
+
+// func (self *ActionCopyField) SetDstOfs(v uint16) {
+// 	self.DstOfs = v
+// }
+
+// func (self *ActionCopyField) GetSrc() goloxi.IOxmId {
+// 	return self.Src
+// }
+
+// func (self *ActionCopyField) SetSrc(v goloxi.IOxmId) {
+// 	self.Src = v
+// }
+
+// func (self *ActionCopyField) GetDst() goloxi.IOxmId {
+// 	return self.Dst
+// }
+
+// func (self *ActionCopyField) SetDst(v goloxi.IOxmId) {
+// 	self.Dst = v
+// }
+
+// func (self *ActionCopyField) Serialize(encoder *goloxi.Encoder) error {
+// 	if err := self.Action.Serialize(encoder); err != nil {
+// 		return err
+// 	}
+
+// 	encoder.PutUint16(uint16(self.NBits))
+// 	encoder.PutUint16(uint16(self.SrcOfs))
+// 	encoder.PutUint16(uint16(self.DstOfs))
+// 	encoder.SkipAlign()
+// 	self.Src.Serialize(encoder)
+// 	self.Dst.Serialize(encoder)
+
+// 	binary.BigEndian.PutUint16(encoder.Bytes()[2:4], uint16(len(encoder.Bytes())))
+
+// 	return nil
+// }
+
+// func DecodeActionCopyField(parent *Action, decoder *goloxi.Decoder) (*ActionCopyField, error) {
+// 	_actioncopyfield := &ActionCopyField{Action: parent}
+// 	if decoder.Length() < 14 {
+// 		return nil, fmt.Errorf("ActionCopyField packet too short: %d < 14", decoder.Length())
+// 	}
+// 	_actioncopyfield.NBits = uint16(decoder.ReadUint16())
+// 	_actioncopyfield.SrcOfs = uint16(decoder.ReadUint16())
+// 	_actioncopyfield.DstOfs = uint16(decoder.ReadUint16())
+// 	if obj, err := DecodeOxmId(decoder); err != nil {
+// 		return nil, err
+// 	} else {
+// 		_actioncopyfield.Src = obj
+// 	}
+
+// 	if obj, err := DecodeOxmId(decoder); err != nil {
+// 		return nil, err
+// 	} else {
+// 		_actioncopyfield.Dst = obj
+// 	}
+
+// 	return _actioncopyfield, nil
+// }
+
+// func NewActionCopyField() *ActionCopyField {
+// 	obj := &ActionCopyField{
+// 		Action: NewAction(28),
+// 	}
+// 	return obj
+// }
+// func (self *ActionCopyField) GetActionName() string {
+// 	return "copy_field"
+// }
+
+// func (self *ActionCopyField) GetActionFields() map[string]interface{} {
+// 	return map[string]interface{}{
+// 		"NBits":  self.NBits,
+// 		"SrcOfs": self.SrcOfs,
+// 		"DstOfs": self.DstOfs,
+// 		"Src":    self.Src,
+// 		"Dst":    self.Dst,
+// 	}
+// }
+
+// func (self *ActionCopyField) MarshalJSON() ([]byte, error) {
+// 	jsonValue, err := json.Marshal(self.GetActionFields())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return []byte(fmt.Sprintf("{\"Type\":\"%s\",\"Arguments\":%s}", self.GetActionName(), string(jsonValue))), nil
+// }
 
 type ActionSetMplsTtl struct {
 	*Action

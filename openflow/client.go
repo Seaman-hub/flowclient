@@ -279,7 +279,7 @@ func (c *Client) RegisterListener(listener Listener) {
 }
 
 // Start monitoring the OpenFlow bridge
-func (c *Client) Start(ctx context.Context, cli *cli.Context) (err error) {
+func (c *Client) Start(ctx context.Context) (err error) {
 	c.conn, err = c.connect(c.addr)
 	if err != nil {
 		return err
@@ -295,7 +295,7 @@ func (c *Client) Start(ctx context.Context, cli *cli.Context) (err error) {
 	go c.readLoop()
 	go c.handleLoop(ctx)
 
-	log.Info("Successfully connected to OpenFlow switch %s using version %d", c.addr, c.protocol.GetVersion())
+	fmt.Printf("Successfully connected to OpenFlow switch %s using version %d", c.addr, c.protocol.GetVersion())
 
 	return nil
 }
@@ -311,7 +311,7 @@ func (c *Client) GetProtocol() Protocol {
 }
 
 // delete all flows
-func (c *Client) deleteAllFlows(tid uint32) error {
+func (c *Client) deleteAllFlows(tid uint8) error {
 	c.SendMessage(c.protocol.NewFlowDelAll(tid))
 	return nil
 }

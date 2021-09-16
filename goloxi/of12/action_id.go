@@ -13,7 +13,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/Seaman-hub/localagent/goloxi"
+	"github.com/Seaman-hub/flowclient/goloxi"
 )
 
 type ActionId struct {

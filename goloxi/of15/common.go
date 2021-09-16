@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Seaman-hub/localagent/goloxi"
+	"github.com/Seaman-hub/flowclient/goloxi"
 )
 
 type OxmId struct {
@@ -39171,12 +39171,13 @@ func NewUint8() *Uint8 {
 }
 
 type ActionCopyField struct {
+	// *Action
 	Type      uint16
 	Len       uint16
 	NBits     uint16
 	SrcOffset uint16
 	DstOffset uint16
-	OxmIds    []goloxi.IOxm
+	OxmIds    []goloxi.IOxmId
 }
 
 type IActionCopyField interface {
@@ -39186,7 +39187,7 @@ type IActionCopyField interface {
 	GetNBits() uint16
 	GetSrcOffset() uint16
 	GetDstOffset() uint16
-	GetOxmIds() []goloxi.IOxm
+	GetOxmIds() []goloxi.IOxmId
 }
 
 func (self *ActionCopyField) GetType() uint16 {
@@ -39229,11 +39230,11 @@ func (self *ActionCopyField) SetDstOffset(v uint16) {
 	self.DstOffset = v
 }
 
-func (self *ActionCopyField) GetOxmIds() []goloxi.IOxm {
+func (self *ActionCopyField) GetOxmIds() []goloxi.IOxmId {
 	return self.OxmIds
 }
 
-func (self *ActionCopyField) SetOxmIds(v []goloxi.IOxm) {
+func (self *ActionCopyField) SetOxmIds(v []goloxi.IOxmId) {
 	self.OxmIds = v
 }
 
@@ -39252,7 +39253,7 @@ func (self *ActionCopyField) Serialize(encoder *goloxi.Encoder) error {
 	}
 
 	binary.BigEndian.PutUint16(encoder.Bytes()[2:4], uint16(len(encoder.Bytes())))
-
+	encoder.SkipAlign()
 	return nil
 }
 
@@ -39284,9 +39285,33 @@ func DecodeActionCopyField(decoder *goloxi.Decoder) (*ActionCopyField, error) {
 }
 
 func NewActionCopyField() *ActionCopyField {
-	obj := &ActionCopyField{}
+	obj := &ActionCopyField{
+		Type: 28,
+	}
 	return obj
 }
+
+func (self *ActionCopyField) GetActionName() string {
+	return "copy_field"
+}
+
+func (self *ActionCopyField) GetActionFields() map[string]interface{} {
+	return map[string]interface{}{
+		"NBits":     self.NBits,
+		"Type":      self.Type,
+		"Len":       self.Len,
+		"DstOffset": self.DstOffset,
+		"SrcOffset": self.SrcOffset,
+	}
+}
+
+// func (self *ActionCopyField) MarshalJSON() ([]byte, error) {
+// 	jsonValue, err := json.Marshal(self.GetActionFields())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return []byte(fmt.Sprintf("{\"Type\":\"%s\",\"Arguments\":%s}", self.GetActionName(), string(jsonValue))), nil
+// }
 
 type ControllerStatusPropExperimenter struct {
 	*ControllerStatusProp

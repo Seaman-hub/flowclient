@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Seaman-hub/localagent/goloxi"
+	"github.com/Seaman-hub/flowclient/goloxi"
 )
 
 type Oxs struct {

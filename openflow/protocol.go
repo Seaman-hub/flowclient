@@ -38,7 +38,7 @@ type Protocol interface {
 	NewEchoReply() goloxi.Message
 	NewBarrierRequest() goloxi.Message
 	NewFlowAddMatchDstIp(dstip string, regval0, regval1 uint32, pri uint16, intableid, gotableid uint8) goloxi.Message
-	NewFlowDelAll(tid uint32) goloxi.Message
+	NewFlowDelAll(tid uint8) goloxi.Message
 	NewFlowDelMatchIp(ip string, intableid uint8) goloxi.Message
 }
 
@@ -68,7 +68,7 @@ func (p OpenFlowProtocol) NewHello(versionBitmap uint32) goloxi.Message {
 	return msg
 }
 
-func (p OpenFlowProtocol) NewFlowDelAll(tid uint32) goloxi.Message {
+func (p OpenFlowProtocol) NewFlowDelAll(tid uint8) goloxi.Message {
 	ethtype := ofp.NewOxmEthType()
 	ethtype.SetValue(ofp.EthPIp)
 
@@ -90,7 +90,7 @@ func (p OpenFlowProtocol) NewFlowDelAll(tid uint32) goloxi.Message {
 }
 func (p OpenFlowProtocol) NewFlowDelMatchIp(ip string, intableid uint8) goloxi.Message {
 
-	log.WithField("ip", ip).Info("flow deleting")
+	fmt.Printf("flow deleting match ip %s in table %d", ip, intableid)
 	ipdst := ofp.NewOxmIpv4Dst()
 	ipdst.SetValue(net.ParseIP(ip))
 
