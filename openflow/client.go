@@ -45,6 +45,28 @@ type Client struct {
 	supportedProtocols []Protocol
 }
 
+type Matchcfg struct {
+	Vlantci    uint16
+	Tcimask    uint16
+	Ipdstwmask string
+	Reg0val    uint32
+	Reg1val    uint32
+}
+type Setcfg struct {
+	Ethsrc    string
+	Ethdst    string
+	Reg0val   uint32
+	Reg1val   uint32
+	Tid       uint8
+	Priority  uint16
+	Gototable uint8
+	Outport   uint16
+}
+type Flowcfg struct {
+	M Matchcfg
+	S Setcfg
+}
+
 // Listener defines the interface implemented by monitor listeners
 type Listener interface {
 	OnMessage(goloxi.Message)
@@ -52,20 +74,20 @@ type Listener interface {
 
 func (c *Client) connect(addr string) (net.Conn, error) {
 	var protocol string
-
+	var port string
 	parts := strings.SplitN(addr, ":", 2)
 	if len(parts) > 1 {
 		protocol = parts[0]
-		addr = parts[1]
+		port = parts[1]
 	} else {
 		return nil, fmt.Errorf("Invalid connection addr '%s'", addr)
 	}
 
 	switch protocol {
 	case "tcp":
-		return net.Dial(protocol, addr)
+		return net.Dial(protocol, port)
 	case "ptcp":
-		listener, err := net.Listen("tcp", addr)
+		listener, err := net.Listen("tcp", port)
 		if err != nil {
 			fmt.Printf("Failed to listen on %s %d", addr, err)
 			return nil, err
@@ -73,8 +95,7 @@ func (c *Client) connect(addr string) (net.Conn, error) {
 		fmt.Printf("Waiting for tcp connection from the bridge ...")
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Errorf("tcp connection from the bridge is wrong, err:%v\n", err)
-			return nil, err
+			return nil, fmt.Errorf("Listen error '%s'", addr)
 		}
 		return conn, nil
 	default:
@@ -259,8 +280,8 @@ func (c *Client) SendMessage(msg goloxi.Message) error {
 		}
 		return nil
 	}
-	// x := msg.MessageName()
-	// fmt.Printf("Message %v, data: %v \n", x, encoder.Bytes())
+	x := msg.MessageName()
+	fmt.Printf("Message %v, data: %v \n", x, encoder.Bytes())
 	_, err := c.conn.Write(encoder.Bytes())
 	return err
 }
@@ -295,7 +316,7 @@ func (c *Client) Start(ctx context.Context) (err error) {
 	go c.readLoop()
 	go c.handleLoop(ctx)
 
-	fmt.Printf("Successfully connected to OpenFlow switch %s using version %d", c.addr, c.protocol.GetVersion())
+	fmt.Printf("Successfully connected to OpenFlow switch %s using version %d\n", c.addr, c.protocol.GetVersion())
 
 	return nil
 }
@@ -311,19 +332,57 @@ func (c *Client) GetProtocol() Protocol {
 }
 
 // delete all flows
-func (c *Client) deleteAllFlows(tid uint8) error {
+func (c *Client) DeleteAllFlows(tid uint8) error {
 	c.SendMessage(c.protocol.NewFlowDelAll(tid))
 	return nil
 }
 
-func (c *Client) deleteFlowMatchIp(ip string, tableid uint8) error {
-	c.SendMessage(c.protocol.NewFlowDelMatchIp(ip, tableid))
+func (c *Client) DeleteFlowMatchDstIp(ip string, tableid uint8) error {
+	c.SendMessage(c.protocol.NewFlowDelMatchDstIp(ip, tableid))
 	return nil
 }
 
-func (c *Client) createFlows(dstip string, regval0, regval1 uint32, pri uint16, intableid, gotableid uint8) error {
+func (c *Client) DeleteFlowMatchDstIpWithMask(ip string, tableid uint8) error {
+	c.SendMessage(c.protocol.NewFlowDelMatchDstIpWithMask(ip, tableid))
+	return nil
+}
+func (c *Client) DeleteFlowMatchDstIpWithReg(ip string, val uint32, tableid uint8) error {
+	c.SendMessage(c.protocol.NewFlowDelMatchDstIpWithReg(ip, val, tableid))
+	return nil
+}
+func (c *Client) CreateFlowSetRegWithDstIp(cfg *Flowcfg) error {
 	// Create flow
-	c.SendMessage(c.protocol.NewFlowAddMatchDstIp(dstip, regval0, regval1, pri, intableid, gotableid))
+	c.SendMessage(c.protocol.NewFlowSetRegWithDstIp(cfg))
+	return nil
+}
+func (c *Client) CreateFlowSetRegWithVal(cfg *Flowcfg) error {
+	// Create flow
+	c.SendMessage(c.protocol.NewFlowSetRegWithVal(cfg))
+	return nil
+}
+func (c *Client) CreateFlowMatchVlanSetEth(cfg *Flowcfg) error {
+	// var tci string
+	// var mask string
+	// parts := strings.SplitN(vlantci, "/", 2)
+	// if len(parts) > 1 {
+	// 	tci = parts[0]
+	// 	mask = parts[1]
+	// } else {
+	// 	fmt.Errorf("Invalid vlantci '%s'", vlantci)
+	// 	return
+	// }
+	// tcival, _ := strconv.ParseInt(tci, 0, 32)
+	// maskval, _ := strconv.ParseInt(mask, 0, 32)
+
+	// Create flow
+	c.SendMessage(c.protocol.NewFlowMatchVlanSetEth(cfg))
+
+	return nil
+}
+func (c *Client) CreateFlowMatchRegSetEth(cfg *Flowcfg) error {
+	// Create flow
+	c.SendMessage(c.protocol.NewFlowMatchRegSetEth(cfg))
+
 	return nil
 }
 
