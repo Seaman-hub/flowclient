@@ -20,6 +20,8 @@ package openflow
 import (
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 
 	"github.com/Seaman-hub/flowclient/goloxi"
 	ofp "github.com/Seaman-hub/flowclient/goloxi/of15"
@@ -38,14 +40,75 @@ type Protocol interface {
 	NewEchoReply() goloxi.Message
 	NewBarrierRequest() goloxi.Message
 
+	// Delete all flows in the table 'tid'
 	NewFlowDelAll(tid uint8) goloxi.Message
-	NewFlowDelMatchDstIp(ip string, intableid uint8) goloxi.Message
-	NewFlowDelMatchDstIpWithMask(ip string, tableid uint8) goloxi.Message
-	NewFlowDelMatchDstIpWithReg(ip string, val uint32, tableid uint8) goloxi.Message
-	NewFlowSetRegWithDstIp(cfg *Flowcfg) goloxi.Message
-	NewFlowSetRegWithVal(cfg *Flowcfg) goloxi.Message
-	NewFlowMatchVlanSetEth(cfg *Flowcfg) goloxi.Message
-	NewFlowMatchRegSetEth(cfg *Flowcfg) goloxi.Message
+	// Delete flows match following field in the table 'tid'
+	// * specific 'cookie' with mask
+	NewFlowDelAllWithCookie(tid uint8, cookie string) goloxi.Message
+	// Delete flows match following field in the table 'tid'
+	// * dest ipv4 addr 'ip'
+	NewFlowDelMatchDstIp(ip string, tid uint8) goloxi.Message
+	// Delete flows match following field in the table 'tid'
+	// * dest ipv4 addr 'ip' with mask
+	NewFlowDelMatchDstIpWithMask(ipwmask string, tid uint8) goloxi.Message
+	// Delete flows match following field in the table 'tid'
+	// * dest ipv4 addr 'ip' with mask
+	// * reg0 value 'val'
+	// * priority value 'pri'
+	NewFlowDelMatchDstIpWithReg(ip string, val uint32, tid uint8, pri uint16) goloxi.Message
+	// Delete flows match following field in the table 'tid'
+	// * vlantci with mask  'cfg.M.Vlantci'
+	// * reg0 value 'cfg.M.Reg0val'
+	// * reg1 value 'cfg.M.Reg1val'
+	NewFlowDelMatchVlanWithRegister(cfg *Flowcfg) goloxi.Message
+	// Create flows in the table 'cfg.S.tid'
+	// [] match fields
+	// * dest ipv4 addr 'cfg.M.Ipdstwmask '
+	// [] action fields
+	// * set reg0 value 'cfg.S.Reg0val'
+	// * load reg1 value from dest ipv4 addr
+	// * go to table cfg.S.Gototable
+	NewFlowCreateSetRegWithDstIp(cfg *Flowcfg) goloxi.Message
+	// Create flows in the table 'cfg.S.tid'  with cookie
+	// [] match fields
+	// * dest ipv4 addr 'cfg.M.Ipdstwmask '
+	// [] action fields
+	// * set reg0 value 'cfg.S.Reg0val'
+	// * load reg1 value from dest ipv4 addr
+	// * go to table cfg.S.Gototable
+	NewFlowCreateSetRegWithDstIpCookie(cfg *Flowcfg) goloxi.Message
+	// Create flows in the table 'cfg.S.tid'
+	// [] match fields
+	// * dest ipv4 addr 'cfg.M.Ipdstwmask '
+	// [] action fields
+	// * set reg0 value 'cfg.S.Reg0val'
+	// * set reg1 value 'cfg.S.Reg1val'
+	// * set priority value 'cfg.S.Priority'
+	// * go to table cfg.S.Gototable
+	NewFlowCreateSetRegWithVal(cfg *Flowcfg) goloxi.Message
+	// Create flows in the table 'cfg.S.tid'
+	// [] match fields
+	// * reg0 value 'cfg.M.Reg0val'
+	// * reg1 value 'cfg.M.Reg1val'
+	// * vlantci value 'cfg.M.Vlantci'
+	// [] action fields
+	// * set eth src value 'cfg.S.Ethsrc'
+	// * set eth dst value 'cfg.S.Ethdst'
+	// * set vlantci value with reg0 value
+	// * output from in port
+	// * set priority value 'cfg.S.Priority'
+	NewFlowCreateMatchVlanSetEth(cfg *Flowcfg) goloxi.Message
+	// Create flows in the table 'cfg.S.tid'
+	// [] match fields
+	// * reg0 value 'cfg.M.Reg0val'
+	// * reg1 value 'cfg.M.Reg1val'
+	// [] action fields
+	// * set eth src value 'cfg.S.Ethsrc'
+	// * set eth dst value 'cfg.S.Ethdst'
+	// * push vlantci value with reg0 value
+	// * output from in port
+	// * set priority value 'cfg.S.Priority'
+	NewFlowCreateMatchRegSetEth(cfg *Flowcfg) goloxi.Message
 }
 
 // OpenFlowProtocol implements the basic methods for OpenFlow
@@ -94,8 +157,42 @@ func (p OpenFlowProtocol) NewFlowDelAll(tid uint8) goloxi.Message {
 	msg.SetCommand(3)
 	return msg
 }
-func (p OpenFlowProtocol) NewFlowDelMatchDstIp(ip string, tableid uint8) goloxi.Message {
-	fmt.Printf("flow deleting match ip %s in table %d", ip, tableid)
+
+func (p OpenFlowProtocol) NewFlowDelAllWithCookie(tid uint8, cookieWmask string) goloxi.Message {
+	ethtype := ofp.NewOxmEthType()
+	ethtype.SetValue(ofp.EthPIp)
+	match := ofp.NewMatchV3()
+	match.SetType(1)    /* OFPMT_OXM */
+	match.SetLength(10) /* header + oxm  */
+	match.SetOxmList([]goloxi.IOxm{ethtype})
+
+	var cookie string
+	var mask string
+	parts := strings.SplitN(cookieWmask, "/", 2)
+	if len(parts) > 1 {
+		cookie = parts[0]
+		mask = parts[1]
+	} else {
+		fmt.Errorf("Invalid cookieWmask '%s'", cookieWmask)
+		return nil
+	}
+	cookieval, _ := strconv.ParseUint(cookie, 0, 64)
+	maskval, _ := strconv.ParseUint(mask, 0, 64)
+
+	msg := ofp.NewFlowDelete()
+	msg.SetMatch(*match)
+	msg.SetTableId(tid)
+	msg.SetOutPort(ofp.OFPPAny)
+	msg.SetOutGroup(ofp.OFPGAny)
+	msg.SetBufferId(ofp.NoBuffer)
+	msg.SetCookie(uint64(cookieval))
+	msg.SetCookieMask(uint64(maskval))
+	msg.SetPriority(100)
+	msg.SetCommand(3)
+	return msg
+}
+func (p OpenFlowProtocol) NewFlowDelMatchDstIp(ip string, tid uint8) goloxi.Message {
+	fmt.Printf("flow deleting match ip %s in table %d", ip, tid)
 	ipdst := ofp.NewOxmIpv4Dst()
 	ipdst.SetValue(net.ParseIP(ip))
 
@@ -109,7 +206,7 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIp(ip string, tableid uint8) goloxi.
 
 	msg := ofp.NewFlowDelete()
 	msg.SetMatch(*match)
-	msg.SetTableId(tableid)
+	msg.SetTableId(tid)
 	msg.SetOutPort(ofp.OFPPAny)
 	msg.SetOutGroup(ofp.OFPGAny)
 	msg.SetBufferId(ofp.NoBuffer)
@@ -120,11 +217,11 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIp(ip string, tableid uint8) goloxi.
 	return msg
 }
 
-func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithMask(ip string, tableid uint8) goloxi.Message {
+func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithMask(ipwithmask string, tid uint8) goloxi.Message {
 
-	fmt.Printf("flow deleting match ip %s in table %d", ip, tableid)
+	fmt.Printf("flow deleting match ip %s in table %d", ipwithmask, tid)
 	matchipdstW := ofp.NewOxmIpv4DstMasked()
-	_, ipNet, err := net.ParseCIDR(ip)
+	_, ipNet, err := net.ParseCIDR(ipwithmask)
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -142,7 +239,7 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithMask(ip string, tableid uint8)
 
 	msg := ofp.NewFlowDelete()
 	msg.SetMatch(*match)
-	msg.SetTableId(tableid)
+	msg.SetTableId(tid)
 	msg.SetOutPort(ofp.OFPPAny)
 	msg.SetOutGroup(ofp.OFPGAny)
 	msg.SetBufferId(ofp.NoBuffer)
@@ -153,11 +250,19 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithMask(ip string, tableid uint8)
 	return msg
 }
 
-func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithReg(ip string, reg0val uint32, tableid uint8) goloxi.Message {
-	fmt.Printf("flow deleting match ip %s in table %d\n", ip, tableid)
+func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithReg(ipwithmask string, reg0val uint32, tid uint8, pri uint16) goloxi.Message {
+	fmt.Printf("flow deleting match ip %s in table %d\n", ipwithmask, tid)
 
-	ipdst := ofp.NewOxmIpv4Dst()
-	ipdst.SetValue(net.ParseIP(ip))
+	// ipdst := ofp.NewOxmIpv4Dst()
+	// ipdst.SetValue(net.ParseIP(ip))
+	matchipdstW := ofp.NewOxmIpv4DstMasked()
+	_, ipNet, err := net.ParseCIDR(ipwithmask)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	matchipdstW.SetValue(net.IP(ipNet.IP))
+	matchipdstW.SetValueMask(net.IP(ipNet.Mask))
 
 	ethtype := ofp.NewOxmEthType()
 	ethtype.SetValue(ofp.EthPIp)
@@ -167,23 +272,67 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithReg(ip string, reg0val uint32,
 
 	match := ofp.NewMatchV3()
 	match.SetType(1)    /* OFPMT_OXM */
-	match.SetLength(30) /* header + oxm  */
-	match.SetOxmList([]goloxi.IOxm{ethtype, reg0, ipdst})
+	match.SetLength(34) /* header + oxm  */
+	match.SetOxmList([]goloxi.IOxm{ethtype, reg0, matchipdstW})
 
 	msg := ofp.NewFlowDelete()
 	msg.SetMatch(*match)
-	msg.SetTableId(tableid)
+	msg.SetTableId(tid)
 	msg.SetOutPort(ofp.OFPPAny)
 	msg.SetOutGroup(ofp.OFPGAny)
 	msg.SetBufferId(ofp.NoBuffer)
 	msg.SetCookie(0)
 	msg.SetCookieMask(0)
-	// msg.SetPriority(pri)
+	msg.SetPriority(pri)
 	msg.SetCommand(3)
 	return msg
 }
+func (p OpenFlowProtocol) NewFlowDelMatchVlanWithRegister(cfg *Flowcfg) goloxi.Message {
+	ethtype := ofp.NewOxmEthType()
+	ethtype.SetValue(ofp.EthPIp)
 
-func (p OpenFlowProtocol) NewFlowSetRegWithDstIp(cfg *Flowcfg) goloxi.Message {
+	reg0 := ofp.NewNxmReg0()
+	reg0.SetValue(cfg.M.Reg0val)
+
+	reg1 := ofp.NewNxmReg1()
+	reg1.SetValue(cfg.M.Reg1val)
+
+	var tci string
+	var mask string
+	parts := strings.SplitN(cfg.M.Vlantci, "/", 2)
+	if len(parts) > 1 {
+		tci = parts[0]
+		mask = parts[1]
+	} else {
+		fmt.Errorf("Invalid vlantci '%s'", cfg.M.Vlantci)
+		return nil
+	}
+	tcival, _ := strconv.ParseUint(tci, 0, 16)
+	maskval, _ := strconv.ParseUint(mask, 0, 16)
+
+	tcioxm := ofp.NewNxmVlanTciMasked()
+	tcioxm.SetValue(uint16(tcival))
+	tcioxm.SetValueMask(uint16(maskval))
+
+	match := ofp.NewMatchV3()
+	match.SetType(1)    /* OFPMT_OXM */
+	match.SetLength(34) /* header + oxm  */
+	match.SetOxmList([]goloxi.IOxm{ethtype, tcioxm, reg0, reg1})
+
+	msg := ofp.NewFlowDelete()
+	msg.SetMatch(*match)
+	msg.SetTableId(uint8(cfg.S.Tid))
+	msg.SetOutPort(ofp.OFPPAny)
+	msg.SetOutGroup(ofp.OFPGAny)
+	msg.SetBufferId(ofp.NoBuffer)
+	msg.SetCookie(0)
+	msg.SetCookieMask(0)
+	msg.SetPriority(cfg.S.Priority)
+	msg.SetCommand(3)
+
+	return msg
+}
+func (p OpenFlowProtocol) NewFlowCreateSetRegWithDstIp(cfg *Flowcfg) goloxi.Message {
 	matchipdstW := ofp.NewOxmIpv4DstMasked()
 	_, ipNet, err := net.ParseCIDR(cfg.M.Ipdstwmask)
 	if err != nil {
@@ -239,7 +388,76 @@ func (p OpenFlowProtocol) NewFlowSetRegWithDstIp(cfg *Flowcfg) goloxi.Message {
 	return msg
 }
 
-func (p OpenFlowProtocol) NewFlowSetRegWithVal(cfg *Flowcfg) goloxi.Message {
+func (p OpenFlowProtocol) NewFlowCreateSetRegWithDstIpCookie(cfg *Flowcfg) goloxi.Message {
+	matchipdstW := ofp.NewOxmIpv4DstMasked()
+	_, ipNet, err := net.ParseCIDR(cfg.M.Ipdstwmask)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	matchipdstW.SetValue(net.IP(ipNet.IP))
+	matchipdstW.SetValueMask(net.IP(ipNet.Mask))
+	ethtype := ofp.NewOxmEthType()
+	ethtype.SetValue(ofp.EthPIp)
+
+	match := ofp.NewMatchV3()
+	match.SetType(1)    /* OFPMT_OXM */
+	match.SetLength(22) /* header + oxm  */
+	match.SetOxmList([]goloxi.IOxm{ethtype, matchipdstW})
+
+	reg0 := ofp.NewNxmReg0()
+	reg0.SetValue(cfg.S.Reg0val)
+	act0 := ofp.NewActionSetField() /* action type OFPAT_SET_FIELD */
+	act0.SetField(reg0)
+	act0.SetLen(16)
+
+	inst1 := ofp.NewInstructionApplyActions() /* instruction type OFPIT_APPLY_ACTIONS */
+
+	src := ofp.NewOxmIdIpv4Dst()
+	dst := ofp.NewOxmIdReg1()
+	act1 := ofp.NewActionCopyField() /* action type OFPAT_COPY_FIELD */
+	// act5.SetSrcOffset(2)
+	// act5.SetDstOffset(16)
+	act1.SetNBits(32)
+	act1.SetOxmIds([]goloxi.IOxmId{src, dst})
+	act1.SetLen(24)
+
+	inst1.SetLen(48)
+	inst1.SetActions([]goloxi.IAction{act0, act1})
+
+	inst2 := ofp.NewInstructionGotoTable()
+	inst2.SetTableId(cfg.S.Gototable)
+	inst2.SetLen(8)
+
+	var cookie string
+	var mask string
+	parts := strings.SplitN(cfg.S.Cookie, "/", 2)
+	if len(parts) > 1 {
+		cookie = parts[0]
+		mask = parts[1]
+	} else {
+		fmt.Errorf("Invalid cookieWmask '%s'", cfg.S.Cookie)
+		return nil
+	}
+	cookieval, _ := strconv.ParseUint(cookie, 0, 64)
+	maskval, _ := strconv.ParseUint(mask, 0, 64)
+
+	msg := ofp.NewFlowAdd()
+	msg.SetMatch(*match)
+	msg.SetTableId(cfg.S.Tid)
+	msg.SetOutPort(ofp.OFPPAny)
+	msg.SetOutGroup(ofp.OFPGAny)
+	msg.SetBufferId(ofp.NoBuffer)
+	msg.SetCookie(cookieval)
+	msg.SetCookieMask(maskval)
+	msg.SetPriority(cfg.S.Priority)
+
+	msg.SetInstructions([]ofp.IInstruction{inst1, inst2})
+
+	return msg
+}
+
+func (p OpenFlowProtocol) NewFlowCreateSetRegWithVal(cfg *Flowcfg) goloxi.Message {
 	matchipdstW := ofp.NewOxmIpv4DstMasked()
 	_, ipNet, err := net.ParseCIDR(cfg.M.Ipdstwmask)
 	if err != nil {
@@ -294,7 +512,7 @@ func (p OpenFlowProtocol) NewFlowSetRegWithVal(cfg *Flowcfg) goloxi.Message {
 
 //ovs-ofctl -OOPENFLOW15 add-flow ch-br "table=2,priority=0xc000,vlan_tci=0x1000/0x1000,ip,
 //reg0=<vid>,reg1=<nexthopIP>,action=load:<dmac>->eth_dst,load:<smac>->eth_src,load:<vid>->vlan_vid,output:in_port"
-func (p OpenFlowProtocol) NewFlowMatchVlanSetEth(cfg *Flowcfg) goloxi.Message {
+func (p OpenFlowProtocol) NewFlowCreateMatchVlanSetEth(cfg *Flowcfg) goloxi.Message {
 	ethtype := ofp.NewOxmEthType()
 	ethtype.SetValue(ofp.EthPIp)
 
@@ -304,14 +522,27 @@ func (p OpenFlowProtocol) NewFlowMatchVlanSetEth(cfg *Flowcfg) goloxi.Message {
 	reg1 := ofp.NewNxmReg1()
 	reg1.SetValue(cfg.M.Reg1val)
 
-	tci := ofp.NewNxmVlanTciMasked()
-	tci.SetValue(cfg.M.Vlantci)
-	tci.SetValueMask(cfg.M.Tcimask)
+	var tci string
+	var mask string
+	parts := strings.SplitN(cfg.M.Vlantci, "/", 2)
+	if len(parts) > 1 {
+		tci = parts[0]
+		mask = parts[1]
+	} else {
+		fmt.Errorf("Invalid vlantci '%s'", cfg.M.Vlantci)
+		return nil
+	}
+	tcival, _ := strconv.ParseUint(tci, 0, 16)
+	maskval, _ := strconv.ParseUint(mask, 0, 16)
+
+	tcioxm := ofp.NewNxmVlanTciMasked()
+	tcioxm.SetValue(uint16(tcival))
+	tcioxm.SetValueMask(uint16(maskval))
 
 	match := ofp.NewMatchV3()
 	match.SetType(1)    /* OFPMT_OXM */
 	match.SetLength(34) /* header + oxm  */
-	match.SetOxmList([]goloxi.IOxm{ethtype, tci, reg0, reg1})
+	match.SetOxmList([]goloxi.IOxm{ethtype, tcioxm, reg0, reg1})
 
 	set_ethsrc := ofp.NewOxmEthSrc()
 	src, _ := net.ParseMAC(cfg.S.Ethsrc)
@@ -359,7 +590,7 @@ func (p OpenFlowProtocol) NewFlowMatchVlanSetEth(cfg *Flowcfg) goloxi.Message {
 //  cookie=0x0, duration=2.040s, table=1, n_packets=0, n_bytes=0, idle_age=2, priority=55,ip,reg0=0xc8,reg1=0x9090909
 // actions=set_field:02:02:02:02:02:02->eth_src,set_field:01:01:01:01:01:01->eth_dst,push_vlan:0x8100,set_field:4296->vlan_vid,IN_PORT
 
-func (p OpenFlowProtocol) NewFlowMatchRegSetEth(cfg *Flowcfg) goloxi.Message {
+func (p OpenFlowProtocol) NewFlowCreateMatchRegSetEth(cfg *Flowcfg) goloxi.Message {
 	ethtype := ofp.NewOxmEthType()
 	ethtype.SetValue(ofp.EthPIp)
 

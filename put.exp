@@ -1,0 +1,42 @@
+#! /bin/env expect
+array set arg $argv
+
+set is_err 0
+
+set SSH_OPTION "-o StrictHostKeyChecking=no"
+set VM_SSH_PORT 22
+set VM_USER "root"
+#set VM_IP "135.252.204.56"
+#set PASSWD "test123"
+set VM_IP "135.251.232.19"
+set PASSWD "NatN0de#8"
+#set VM_IP "135.251.232.46"
+#set PASSWD "ovs-frr76"
+
+#Local files
+set FILE            "main"
+
+#Target files
+set FILE_T          "/root/flowclient"
+
+log_user 0
+
+spawn sed "/$VM_IP]:$VM_SSH_PORT/d" -i /root/.ssh/known_hosts
+set timeout 300
+expect "" { send "" }
+expect eof
+
+spawn ssh -p $VM_SSH_PORT $SSH_OPTION $VM_USER@$VM_IP ls -l
+set timeout 100
+expect {
+        timeout {send_user "\n  $VM_IP not arrived!\n"; exit 1}
+        "yes\/no" {send "yes\n";expect "*assword*" { send "$PASSWD\n"} }
+        "*assword*" { send "$PASSWD\n"}
+}
+expect eof
+
+spawn scp -P $VM_SSH_PORT $FILE $VM_USER@$VM_IP:$FILE_T
+set timeout 300
+expect "*:" { send "$PASSWD\n" }
+expect eof
+exit

@@ -46,8 +46,7 @@ type Client struct {
 }
 
 type Matchcfg struct {
-	Vlantci    uint16
-	Tcimask    uint16
+	Vlantci    string
 	Ipdstwmask string
 	Reg0val    uint32
 	Reg1val    uint32
@@ -55,6 +54,7 @@ type Matchcfg struct {
 type Setcfg struct {
 	Ethsrc    string
 	Ethdst    string
+	Cookie    string
 	Reg0val   uint32
 	Reg1val   uint32
 	Tid       uint8
@@ -281,7 +281,10 @@ func (c *Client) SendMessage(msg goloxi.Message) error {
 		return nil
 	}
 	x := msg.MessageName()
-	fmt.Printf("Message %v, data: %v \n", x, encoder.Bytes())
+	if x != "echo_request" {
+		fmt.Printf("Message %v, data: %v \n", x, encoder.Bytes())
+	}
+
 	_, err := c.conn.Write(encoder.Bytes())
 	return err
 }
@@ -337,6 +340,11 @@ func (c *Client) DeleteAllFlows(tid uint8) error {
 	return nil
 }
 
+// delete all flows
+func (c *Client) DeleteAllFlowsWithCookie(tid uint8, cookie string) error {
+	c.SendMessage(c.protocol.NewFlowDelAllWithCookie(tid, cookie))
+	return nil
+}
 func (c *Client) DeleteFlowMatchDstIp(ip string, tableid uint8) error {
 	c.SendMessage(c.protocol.NewFlowDelMatchDstIp(ip, tableid))
 	return nil
@@ -346,18 +354,28 @@ func (c *Client) DeleteFlowMatchDstIpWithMask(ip string, tableid uint8) error {
 	c.SendMessage(c.protocol.NewFlowDelMatchDstIpWithMask(ip, tableid))
 	return nil
 }
-func (c *Client) DeleteFlowMatchDstIpWithReg(ip string, val uint32, tableid uint8) error {
-	c.SendMessage(c.protocol.NewFlowDelMatchDstIpWithReg(ip, val, tableid))
+func (c *Client) DeleteFlowMatchDstIpWithReg(ip string, val uint32, tableid uint8, pri uint16) error {
+	c.SendMessage(c.protocol.NewFlowDelMatchDstIpWithReg(ip, val, tableid, pri))
 	return nil
 }
+func (c *Client) DeleteFlowMatchVlan(cfg *Flowcfg) error {
+	c.SendMessage(c.protocol.NewFlowDelMatchVlanWithRegister(cfg))
+	return nil
+}
+
 func (c *Client) CreateFlowSetRegWithDstIp(cfg *Flowcfg) error {
 	// Create flow
-	c.SendMessage(c.protocol.NewFlowSetRegWithDstIp(cfg))
+	c.SendMessage(c.protocol.NewFlowCreateSetRegWithDstIp(cfg))
+	return nil
+}
+func (c *Client) CreateFlowSetRegWithDstIpCookie(cfg *Flowcfg) error {
+	// Create flow
+	c.SendMessage(c.protocol.NewFlowCreateSetRegWithDstIpCookie(cfg))
 	return nil
 }
 func (c *Client) CreateFlowSetRegWithVal(cfg *Flowcfg) error {
 	// Create flow
-	c.SendMessage(c.protocol.NewFlowSetRegWithVal(cfg))
+	c.SendMessage(c.protocol.NewFlowCreateSetRegWithVal(cfg))
 	return nil
 }
 func (c *Client) CreateFlowMatchVlanSetEth(cfg *Flowcfg) error {
@@ -375,13 +393,13 @@ func (c *Client) CreateFlowMatchVlanSetEth(cfg *Flowcfg) error {
 	// maskval, _ := strconv.ParseInt(mask, 0, 32)
 
 	// Create flow
-	c.SendMessage(c.protocol.NewFlowMatchVlanSetEth(cfg))
+	c.SendMessage(c.protocol.NewFlowCreateMatchVlanSetEth(cfg))
 
 	return nil
 }
 func (c *Client) CreateFlowMatchRegSetEth(cfg *Flowcfg) error {
 	// Create flow
-	c.SendMessage(c.protocol.NewFlowMatchRegSetEth(cfg))
+	c.SendMessage(c.protocol.NewFlowCreateMatchRegSetEth(cfg))
 
 	return nil
 }
