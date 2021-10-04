@@ -272,7 +272,7 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithReg(ipwithmask string, reg0val
 
 	match := ofp.NewMatchV3()
 	match.SetType(1)    /* OFPMT_OXM */
-	match.SetLength(34) /* header + oxm  */
+	match.SetLength(30) /* header + oxm  */
 	match.SetOxmList([]goloxi.IOxm{ethtype, reg0, matchipdstW})
 
 	msg := ofp.NewFlowDelete()
@@ -344,16 +344,19 @@ func (p OpenFlowProtocol) NewFlowCreateSetRegWithDstIp(cfg *Flowcfg) goloxi.Mess
 	ethtype := ofp.NewOxmEthType()
 	ethtype.SetValue(ofp.EthPIp)
 
+	reg0 := ofp.NewNxmReg0()
+	reg0.SetValue(cfg.M.Reg0val)
+
 	match := ofp.NewMatchV3()
 	match.SetType(1)    /* OFPMT_OXM */
-	match.SetLength(22) /* header + oxm  */
-	match.SetOxmList([]goloxi.IOxm{ethtype, matchipdstW})
+	match.SetLength(30) /* header + oxm  */
+	match.SetOxmList([]goloxi.IOxm{ethtype, reg0, matchipdstW})
 
-	reg0 := ofp.NewNxmReg0()
-	reg0.SetValue(cfg.S.Reg0val)
-	act0 := ofp.NewActionSetField() /* action type OFPAT_SET_FIELD */
-	act0.SetField(reg0)
-	act0.SetLen(16)
+	// reg0 := ofp.NewNxmReg0()
+	// reg0.SetValue(cfg.S.Reg0val)
+	// act0 := ofp.NewActionSetField() /* action type OFPAT_SET_FIELD */
+	// act0.SetField(reg0)
+	// act0.SetLen(16)
 
 	inst1 := ofp.NewInstructionApplyActions() /* instruction type OFPIT_APPLY_ACTIONS */
 
@@ -366,8 +369,8 @@ func (p OpenFlowProtocol) NewFlowCreateSetRegWithDstIp(cfg *Flowcfg) goloxi.Mess
 	act1.SetOxmIds([]goloxi.IOxmId{src, dst})
 	act1.SetLen(24)
 
-	inst1.SetLen(48)
-	inst1.SetActions([]goloxi.IAction{act0, act1})
+	inst1.SetLen(32)
+	inst1.SetActions([]goloxi.IAction{act1})
 
 	inst2 := ofp.NewInstructionGotoTable()
 	inst2.SetTableId(cfg.S.Gototable)
@@ -469,16 +472,19 @@ func (p OpenFlowProtocol) NewFlowCreateSetRegWithVal(cfg *Flowcfg) goloxi.Messag
 	ethtype := ofp.NewOxmEthType()
 	ethtype.SetValue(ofp.EthPIp)
 
+	reg0 := ofp.NewNxmReg0()
+	reg0.SetValue(cfg.M.Reg0val)
+
 	match := ofp.NewMatchV3()
 	match.SetType(1)    /* OFPMT_OXM */
-	match.SetLength(22) /* header + oxm  */
-	match.SetOxmList([]goloxi.IOxm{ethtype, matchipdstW})
+	match.SetLength(30) /* header + oxm  */
+	match.SetOxmList([]goloxi.IOxm{ethtype, reg0, matchipdstW})
 
-	reg0 := ofp.NewNxmReg0()
-	reg0.SetValue(cfg.S.Reg0val)
-	act0 := ofp.NewActionSetField() /* action type OFPAT_SET_FIELD */
-	act0.SetField(reg0)
-	act0.SetLen(16)
+	// reg0 := ofp.NewNxmReg0()
+	// reg0.SetValue(cfg.S.Reg0val)
+	// act0 := ofp.NewActionSetField() /* action type OFPAT_SET_FIELD */
+	// act0.SetField(reg0)
+	// act0.SetLen(16)
 
 	inst1 := ofp.NewInstructionApplyActions() /* instruction type OFPIT_APPLY_ACTIONS */
 
@@ -488,8 +494,8 @@ func (p OpenFlowProtocol) NewFlowCreateSetRegWithVal(cfg *Flowcfg) goloxi.Messag
 	act1.SetField(reg1)
 	act1.SetLen(16)
 
-	inst1.SetLen(40)
-	inst1.SetActions([]goloxi.IAction{act0, act1})
+	inst1.SetLen(24)
+	inst1.SetActions([]goloxi.IAction{act1})
 
 	inst2 := ofp.NewInstructionGotoTable()
 	inst2.SetTableId(cfg.S.Gototable)

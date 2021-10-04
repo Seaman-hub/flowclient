@@ -280,10 +280,10 @@ func (c *Client) SendMessage(msg goloxi.Message) error {
 		}
 		return nil
 	}
-	x := msg.MessageName()
-	if x != "echo_request" {
-		fmt.Printf("Message %v, data: %v \n", x, encoder.Bytes())
-	}
+	// x := msg.MessageName()
+	// if x != "echo_request" {
+	// 	fmt.Printf("Message %v, data: %v \n", x, encoder.Bytes())
+	// }
 
 	_, err := c.conn.Write(encoder.Bytes())
 	return err

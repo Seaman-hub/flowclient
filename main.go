@@ -65,7 +65,7 @@ func main() {
 
 	var cfg openflow.Flowcfg
 	cfg.M.Ipdstwmask = "11.11.11.11/24"
-	cfg.S.Reg0val = 100
+	cfg.M.Reg0val = 100
 
 	cfg.S.Tid = 1
 	cfg.S.Gototable = 2
@@ -134,21 +134,22 @@ func main() {
 	// execpause()
 
 	// To del flows like table=1,ip,ip_dst=11.11.11.11/24
-	controller.Client.DeleteFlowMatchDstIpWithMask("11.11.11.11/24", cfg.S.Tid)
-	fmt.Println("\nDeleteFlowMatchDstIpWithMask() end")
+	controller.Client.DeleteFlowMatchDstIpWithMask(cfg.M.Ipdstwmask, cfg.S.Tid)
+	fmt.Printf("\nDeleteFlowMatchDstIpWithMask() ip dst = %s\n", cfg.M.Ipdstwmask)
 	execshell()
 	execpause()
 
 	controller.Client.CreateFlowSetRegWithDstIp(&cfg)
 	fmt.Printf("\nCreateFlowSetRegWithDstIp() ip dst = %s\n", cfg.M.Ipdstwmask)
-
+	execshell()
+	execpause()
 	// To del flows like table=1,ip,reg0=100,ip_dst=11.11.11.11/24
-	controller.Client.DeleteFlowMatchDstIpWithReg("11.11.11.11/24", 100, cfg.S.Tid, 2)
-	fmt.Printf("\nDeleteFlowMatchDstIpWithReg() end\n")
-
+	controller.Client.DeleteFlowMatchDstIpWithReg(cfg.M.Ipdstwmask, 100, cfg.S.Tid, 2)
+	fmt.Printf("\nDeleteFlowMatchDstIpWithReg() ip dst = %s\n", cfg.M.Ipdstwmask)
+	execshell()
+	execpause()
 	cfg.S.Ethdst = "01:01:01:01:01:01"
 	cfg.S.Ethsrc = "02:02:02:02:02:02"
-	cfg.S.Outport = 3
 
 	cfg.M.Reg0val = 200
 	cfg.M.Reg1val = 0x9090909
@@ -169,6 +170,6 @@ func main() {
 	execpause()
 	// delete flow as above
 	controller.Client.DeleteFlowMatchVlan(&cfg)
-	fmt.Printf("\nDeleteFlowMatchVlan() end\n")
+	fmt.Printf("\nDeleteFlowMatchVlan() vlantci = %s\n", cfg.M.Vlantci)
 	execshell()
 }
