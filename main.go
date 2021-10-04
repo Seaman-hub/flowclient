@@ -143,6 +143,12 @@ func main() {
 	fmt.Printf("\nCreateFlowSetRegWithDstIp() ip dst = %s\n", cfg.M.Ipdstwmask)
 	execshell()
 	execpause()
+	cfg.M.Ipdstwmask = "33.33.33.33/24"
+	cfg.S.Priority = 2
+	controller.Client.CreateFlowSetRegWithDstIp(&cfg)
+	fmt.Printf("\nCreateFlowSetRegWithDstIp() ip dst = %s\n", cfg.M.Ipdstwmask)
+	execshell()
+	execpause()
 	// To del flows like table=1,ip,reg0=100,ip_dst=11.11.11.11/24
 	controller.Client.DeleteFlowMatchDstIpWithReg(cfg.M.Ipdstwmask, 100, cfg.S.Tid, 2)
 	fmt.Printf("\nDeleteFlowMatchDstIpWithReg() ip dst = %s\n", cfg.M.Ipdstwmask)

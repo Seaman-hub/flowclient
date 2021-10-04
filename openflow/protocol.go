@@ -284,7 +284,7 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithReg(ipwithmask string, reg0val
 	msg.SetCookie(0)
 	msg.SetCookieMask(0)
 	msg.SetPriority(pri)
-	msg.SetCommand(3)
+	msg.SetCommand(4)
 	return msg
 }
 func (p OpenFlowProtocol) NewFlowDelMatchVlanWithRegister(cfg *Flowcfg) goloxi.Message {
