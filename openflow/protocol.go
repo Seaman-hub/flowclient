@@ -192,7 +192,7 @@ func (p OpenFlowProtocol) NewFlowDelAllWithCookie(tid uint8, cookieWmask string)
 	return msg
 }
 func (p OpenFlowProtocol) NewFlowDelMatchDstIp(ip string, tid uint8) goloxi.Message {
-	fmt.Printf("flow deleting match ip %s in table %d", ip, tid)
+	// fmt.Printf("flow deleting match ip %s in table %d", ip, tid)
 	ipdst := ofp.NewOxmIpv4Dst()
 	ipdst.SetValue(net.ParseIP(ip))
 
@@ -219,7 +219,7 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIp(ip string, tid uint8) goloxi.Mess
 
 func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithMask(ipwithmask string, tid uint8) goloxi.Message {
 
-	fmt.Printf("flow deleting match ip %s in table %d", ipwithmask, tid)
+	// fmt.Printf("flow deleting match ip %s in table %d", ipwithmask, tid)
 	matchipdstW := ofp.NewOxmIpv4DstMasked()
 	_, ipNet, err := net.ParseCIDR(ipwithmask)
 	if err != nil {
@@ -251,7 +251,7 @@ func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithMask(ipwithmask string, tid ui
 }
 
 func (p OpenFlowProtocol) NewFlowDelMatchDstIpWithReg(ipwithmask string, reg0val uint32, tid uint8, pri uint16) goloxi.Message {
-	fmt.Printf("flow deleting match ip %s in table %d\n", ipwithmask, tid)
+	// fmt.Printf("flow deleting match ip %s in table %d\n", ipwithmask, tid)
 
 	// ipdst := ofp.NewOxmIpv4Dst()
 	// ipdst.SetValue(net.ParseIP(ip))
