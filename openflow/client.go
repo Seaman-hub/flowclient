@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	echoDuration = 3
+	echoDuration = 300
 )
 
 var (
