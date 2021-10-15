@@ -206,12 +206,14 @@ func (c *Client) readMessage() (*goloxi.Header, []byte, error) {
 	// c.conn.SetReadDeadline(time.Time{})
 	data, err := c.reader.Peek(8)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Failed to peek 8 bytes: %s", err)
+		// return nil, nil, err
 	}
 
 	header := &goloxi.Header{}
 	if err := header.Decode(goloxi.NewDecoder(data)); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Failed to decode 8 bytes: %s", err)
+		// return nil, nil, err
 	}
 
 	data = make([]byte, header.Length)
@@ -227,10 +229,12 @@ func (c *Client) readLoop() {
 	for {
 		_, data, err := c.readMessage()
 		if err != nil {
-			if err != io.EOF {
-				logging.GetLogger().Error(err)
-			}
-			return
+			// if err != io.EOF {
+			// 	logging.GetLogger().Error(err)
+			// }
+			logging.GetLogger().Error(err)
+			continue
+			// return
 		}
 
 		msg, err := c.protocol.DecodeMessage(data)
