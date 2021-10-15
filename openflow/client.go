@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	echoDuration = 300
+	echoDuration = 6
 )
 
 var (
@@ -202,8 +202,8 @@ func (c *Client) dispatchMessage(msg goloxi.Message) {
 }
 
 func (c *Client) readMessage() (*goloxi.Header, []byte, error) {
-	// c.conn.SetReadDeadline(time.Now().Add(30 * time.Second))
-	c.conn.SetReadDeadline(time.Time{})
+	c.conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+	// c.conn.SetReadDeadline(time.Time{})
 	data, err := c.reader.Peek(8)
 	if err != nil {
 		return nil, nil, err
